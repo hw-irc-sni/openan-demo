@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -27,11 +28,15 @@ REQUIRED_FILES = (SCENARIO_FILENAME, SCENARIO_WORKFLOW_FILENAME, SCENARIO_AGENTS
 
 
 def scenarios_dir() -> Path:
-    """项目根 scenarios/ 目录（可用环境变量 MOCK_AGENT_SCENARIOS_DIR 覆盖）。"""
-    import os
-
+    """Resolve the configured scenario root or the source checkout layout."""
     override = os.environ.get("MOCK_AGENT_SCENARIOS_DIR")
-    return Path(override) if override else Path(__file__).resolve().parents[1] / "scenarios"
+    if override:
+        return Path(override)
+    project = Path(__file__).resolve().parents[1]
+    deployed_root = project / "scenarios"
+    if deployed_root.is_dir() or not (project / "pyproject.toml").is_file():
+        return deployed_root
+    return project.parent
 
 
 def list_scenario_dirs() -> list[Path]:
@@ -54,7 +59,7 @@ def resolve_scenario_dir(scenario: str) -> Path:
     if directory.is_dir() and all((directory / f).is_file() for f in REQUIRED_FILES):
         return directory
     raise FileNotFoundError(
-        f"未找到场景目录：{scenario}（scenarios/{scenario}/ 下需包含 {'、'.join(REQUIRED_FILES)}）"
+        f"未找到场景目录：{scenario}（目录下需包含 {'、'.join(REQUIRED_FILES)}）"
     )
 
 

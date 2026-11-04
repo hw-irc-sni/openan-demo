@@ -1,6 +1,7 @@
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from secrets import token_urlsafe
 
 from dotenv import dotenv_values
 
@@ -10,7 +11,7 @@ class Settings:
     host: str = "127.0.0.1"
     port: int = 9000
     db_path: Path = Path("data/mockagent.db")
-    jwt_secret: str = "dev-secret-change-me"
+    jwt_secret: str = field(default_factory=lambda: token_urlsafe(32), repr=False)
     jwt_expire_minutes: int = 720
     admin_password: str | None = None
     public_agent_url: str = "http://127.0.0.1:9000/debug/a2a"
@@ -19,6 +20,14 @@ class Settings:
     dataset_search: bool = True
     language: str = "zh-CN"
     env_path: Path = Path(".env")
+
+    def __post_init__(self) -> None:
+        validate_jwt_secret(self.jwt_secret)
+
+
+def validate_jwt_secret(secret: str) -> None:
+    if len(secret.strip().encode("utf-8")) < 32:
+        raise ValueError("MOCK_AGENT_JWT_SECRET must contain at least 32 bytes")
 
 
 def load_settings(env_path: Path | None = None) -> Settings:
@@ -34,7 +43,7 @@ def load_settings(env_path: Path | None = None) -> Settings:
         host=resolve("MOCK_AGENT_HOST", "127.0.0.1"),
         port=int(resolve("MOCK_AGENT_PORT", "9000")),
         db_path=Path(resolve("MOCK_AGENT_DB_PATH", "data/mockagent.db")),
-        jwt_secret=resolve("MOCK_AGENT_JWT_SECRET", "dev-secret-change-me"),
+        jwt_secret=resolve("MOCK_AGENT_JWT_SECRET", "") or token_urlsafe(32),
         jwt_expire_minutes=int(resolve("MOCK_AGENT_JWT_EXPIRE_MINUTES", "720")),
         admin_password=resolve("MOCK_AGENT_ADMIN_PASSWORD", "") or None,
         public_agent_url=resolve("MOCK_AGENT_PUBLIC_URL", "http://127.0.0.1:9000/debug/a2a"),

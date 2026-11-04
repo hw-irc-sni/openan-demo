@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from ..auth import get_current_user
+from ..config import validate_jwt_secret
 
 router = APIRouter(prefix="/api/v1/console/oda", tags=["oda"])
 
@@ -142,6 +143,10 @@ def _labels(release: str) -> dict:
 
 # ---------- 清单生成 ----------
 def _manifests(cfg: OdaConfig) -> list[dict]:
+    try:
+        validate_jwt_secret(cfg.jwtSecret)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     agents = _selected_agents(cfg)
     release = cfg.release or "openan-mockagent"
     svc = f"{release}-core"
@@ -149,7 +154,7 @@ def _manifests(cfg: OdaConfig) -> list[dict]:
     public_base = (cfg.publicUrl or f"http://{svc}:9000").rstrip("/")
     objs: list[dict] = []
 
-    secret_data = {"jwt-secret": cfg.jwtSecret or "dev-secret-change-me"}
+    secret_data = {"jwt-secret": cfg.jwtSecret}
     if cfg.adminPassword:
         secret_data["admin-password"] = cfg.adminPassword
     objs.append({

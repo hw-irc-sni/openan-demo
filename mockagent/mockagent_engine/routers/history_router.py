@@ -5,11 +5,18 @@ from sqlalchemy.orm import Session
 from ..auth import get_current_user
 from ..deps import get_db
 from ..models import RequestLog
+from .debug_proxy_router import FEATURE_TO_KEY
 
 router = APIRouter(prefix="/api/v1/history", tags=["history"])
 
 
 def _log_view(item: RequestLog, *, with_user: bool = False) -> dict:
+    request_body = item.request_body
+    response_body = item.response_body
+    if item.direction == "console" and item.feature in FEATURE_TO_KEY:
+        # Legacy proxy rows may contain arbitrary credentials in either payload.
+        request_body = {"method": (request_body or {}).get("method")}
+        response_body = {"status": (response_body or {}).get("status")}
     view = {
         "id": item.id,
         "feature": item.feature,
@@ -19,8 +26,8 @@ def _log_view(item: RequestLog, *, with_user: bool = False) -> dict:
         "negotiated": item.negotiated,
         "latencyMs": item.latency_ms,
         "createdAt": item.created_at.isoformat() if item.created_at else None,
-        "requestBody": item.request_body,
-        "responseBody": item.response_body,
+        "requestBody": request_body,
+        "responseBody": response_body,
     }
     if with_user:
         view["userId"] = item.user_id
@@ -36,9 +43,11 @@ def list_history(
     limit: int = Query(50, ge=0, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
-    _: dict = Depends(get_current_user),
+    user: dict = Depends(get_current_user),
 ):
     query = select(RequestLog)
+    if user["role"] != "admin":
+        query = query.where(RequestLog.user_id == user["id"])
     if templateUri:
         query = query.where(RequestLog.template_uri == templateUri)
     if direction:
@@ -53,8 +62,8 @@ def list_history(
 
 
 @router.get("/{log_id}")
-def get_history(log_id: int, db: Session = Depends(get_db), _: dict = Depends(get_current_user)):
+def get_history(log_id: int, db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
     item = db.get(RequestLog, log_id)
-    if item is None:
+    if item is None or (user["role"] != "admin" and item.user_id != user["id"]):
         raise HTTPException(status_code=404, detail="Log not found")
     return _log_view(item, with_user=True)

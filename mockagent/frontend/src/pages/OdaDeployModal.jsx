@@ -150,7 +150,7 @@ export default function OdaDeployModal({ initialAgents = [], onClose }) {
               <details style={{ marginTop: 10 }}>
                 <summary className="muted" style={{ cursor: 'pointer', fontSize: 13 }}>高级选项</summary>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginTop: 10 }}>
-                  <label style={{ display: 'grid', gap: 4 }}>JWT 密钥<input type="password" value={cfg.jwtSecret} onChange={set('jwtSecret')} placeholder={cfg.jwtSecret ? '已保存' : '默认 dev-secret-change-me'} /></label>
+                  <label style={{ display: 'grid', gap: 4 }}>JWT 密钥<input type="password" value={cfg.jwtSecret} onChange={set('jwtSecret')} placeholder={cfg.jwtSecret ? '已保存' : '部署需填写至少 32 字节的随机密钥'} /></label>
                   <label style={{ display: 'grid', gap: 4 }}>控制台 admin 密码（可选）<input type="password" value={cfg.adminPassword} onChange={set('adminPassword')} placeholder="留空不启用" /></label>
                   <label style={{ display: 'grid', gap: 4 }}>存储容量<input value={cfg.storageSize} onChange={set('storageSize')} /></label>
                   <label style={{ display: 'grid', gap: 4 }}>组件编号<input value={cfg.componentId} onChange={set('componentId')} /></label>

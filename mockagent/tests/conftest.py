@@ -11,7 +11,7 @@ def app(tmp_path, monkeypatch):
     """每个测试独立 SQLite + 固定管理员密码（bootstrap 会用它创建 admin 用户）。"""
     monkeypatch.setenv("MOCK_AGENT_DB_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("MOCK_AGENT_ADMIN_PASSWORD", TEST_ADMIN_PASSWORD)
-    monkeypatch.setenv("MOCK_AGENT_JWT_SECRET", "test-jwt-secret")
+    monkeypatch.setenv("MOCK_AGENT_JWT_SECRET", "fixture-only-64-byte-test-key-" * 3)
     from mockagent_engine.main import create_app
 
     return create_app()

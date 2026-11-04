@@ -50,13 +50,6 @@ async def debug_proxy(
     base_url = _get_url(db, key, SERVICE_URL_DEFAULTS[key])
     url = base_url.rstrip("/") + body.path
     headers = dict(body.headers or {})
-    request_body_log = {
-        "method": body.method,
-        "path": body.path,
-        "headers": body.headers,
-        "body": body.body,
-        "baseUrl": base_url,
-    }
     payload_kwargs = {}
     if body.body is not None:
         payload_kwargs["json"] = body.body
@@ -102,17 +95,15 @@ async def debug_proxy(
     except httpx.HTTPError as e:
         latency_ms = int((time.monotonic() - started) * 1000)
         result = {"status": 0, "kind": "error", "body": {"error": str(e)}}
-        response_view = {"error": str(e)}
     else:
         latency_ms = int((time.monotonic() - started) * 1000)
-        response_view = result
     db.add(
         RequestLog(
             feature=feature,
             direction="console",
             template_uri=None,
-            request_body=request_body_log,
-            response_body={"status": result["status"], "response": response_view},
+            request_body={"method": body.method},
+            response_body={"status": result["status"]},
             task_state=None,
             negotiated=False,
             latency_ms=latency_ms,

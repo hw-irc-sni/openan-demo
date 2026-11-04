@@ -40,13 +40,7 @@ async function realFetch(path, options = {}) {
 }
 
 export async function apiFetch(path, options) {
-  try {
-    return await realFetch(path, options)
-  } catch (error) {
-    if (error instanceof ApiError) throw error
-    const { mockApi } = await import('./mock')
-    return mockApi(path, options)
-  }
+  return realFetch(path, options)
 }
 
 export const api = {
