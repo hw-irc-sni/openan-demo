@@ -64,7 +64,9 @@ mockagent/                                # 独立项目根 / standalone project
 > 命名说明 / Naming：`mockagent/` 是项目根，`mockagent_engine/` 是引擎代码包（Python 导入名不含连字符），`agents/` 是 Agent 定义目录——三者职责互不重叠。
 > `mockagent/` is the project root, `mockagent_engine/` is the engine package (Python imports cannot contain hyphens), and `agents/` holds the agent definitions.
 
-**场景目录 / Scenario directories**：每个场景一个目录（`scenarios/<id>/`），打包三类配置，缺一不可——`scenario.json` 故事线描述（背景/角色/阶段/预期结果，中英名称）、`workflow.json` 本场景的 PSOP 工作流、`agents.json` 场景需要的智能体清单（引用 `agents/<id>/` 定义并声明角色 workflow-host/participant，引用不存在的 Agent 会被拒绝）。工作流按 id 两级查找：全局 `workflows/` → 场景目录；场景接口：`GET /api/v1/scenarios`（列表）、`GET /api/v1/scenarios/{id}`（详情含故事线与智能体）。
+**场景目录 / Scenario directories**。源码仓库在根目录按场景 ID 保存资源。部署时将场景目录放在 `mockagent/scenarios/` 下，或通过 `MOCK_AGENT_SCENARIOS_DIR` 指定外部资源根目录。每个场景包含 `scenario.json`、`workflow.json` 和 `agents.json`。工作流先查全局 `workflows/`，再查场景目录。使用 `GET /api/v1/scenarios` 查看列表，使用 `GET /api/v1/scenarios/{id}` 查看详情。
+
+未配置 `MOCK_AGENT_JWT_SECRET` 时，每次启动生成随机签名值。多进程或需要在重启后保留登录态时，配置至少 32 字节的随机密钥。调测代理历史只记录方法、状态和耗时。普通用户可查看自己的历史，管理员可查看全部历史。升级前的代理记录在 API 返回时只显示元数据。
 
 **场景初始化 / Scenario initialization**：`POST /api/v1/scenarios/{id}/init` 一键就绪场景——① 校验三类配置；② 把 PSOP 工作流写入运行时注册表（全局 `workflows/<id>.json` + 宿主 workDir 副本，`workflows/` 为运行时产物不入库）；③ 按 `agents.json` 拉起全部智能体子进程（已运行的跳过，单个失败不阻塞其余）。配套 `GET /api/v1/scenarios/{id}/status`（各智能体运行状态）与 `POST /api/v1/scenarios/{id}/stop`（停止全部）。
 
@@ -88,7 +90,7 @@ mockagent/                                # 独立项目根 / standalone project
 ```bash
 # 后端 Backend (Python 3.12+，项目根目录下 / from project root)
 pip install -r requirements.txt
-uvicorn mockagent_engine.main:app --host 0.0.0.0 --port 9100
+uvicorn --factory mockagent_engine.main:create_app --host 127.0.0.1 --port 9100
 # API 前缀 API prefix: http://127.0.0.1:9100/api/v1  （JWT 登录 / auth/login）
 
 # 单独启动某个 Agent（等价于管理 API 的 start）
@@ -108,7 +110,7 @@ npm install && npm run dev
 
 - 实例管理：`POST /api/v1/mock-instances/{id}/start`（后端以 `python -m mockagent_engine.standalone_agent --agent <id>` 拉起，定义读取 `agents/<id>/agent.json`；内置 6 个 SPN 打桩实例端口 9005-9010，20 个 AN L4 打桩实例端口 9101-9120；网关模式则全部实例共用单端口，见快速开始）。
 - Instance management: `POST /api/v1/mock-instances/{id}/start` spawns each agent on ports 9005-9010 (definitions read from `agents/<id>/agent.json`).
-- 工作流模式：给实例配置 `"workflow": {"enabled": true, "workflowId": "live-assurance-demo"}` 后，向该实例发送意图请求即可触发端到端编排（工作流文件见 `scenarios/live-assurance-demo/workflow.json`）。
+- 工作流模式：给实例配置 `"workflow": {"enabled": true, "workflowId": "live-assurance-demo"}` 后，向该实例发送意图请求即可触发端到端编排（工作流文件见仓库根目录的 `live-assurance-demo/workflow.json`）。
 - Workflow mode: enable `"workflow": {"enabled": true, "workflowId": "live-assurance-demo"}` on an instance, then send an intent request to trigger end-to-end orchestration.
 - LLM 模式：配置 OpenAI 兼容 `baseUrl`/`model`，密钥经环境变量 `MOCK_AGENT_LLM_API_KEY` 注入。
 - LLM mode: configure an OpenAI-compatible `baseUrl`/`model`; the key is read from env `MOCK_AGENT_LLM_API_KEY`.
